@@ -1,0 +1,96 @@
+#include <Wire.h>
+#include <Adafruit_GFX.h>
+#include <Adafruit_SSD1306.h>
+
+#define SCREEN_WIDTH 128
+#define SCREEN_HEIGHT 64
+#define OLED_RESET    -1
+Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
+
+// Define sensor and actuator pins
+#define pulsePin A0  
+#define redLedPin D0   
+#define yellowLedPin D3 
+#define greenLedPin D4  
+#define buzzerPin D7    
+
+int pulseValue;
+int bpm;
+const int threshold = 600;
+
+void setup() {
+    Serial.begin(115200);
+    delay(1000);
+    
+    pinMode(redLedPin, OUTPUT);
+    pinMode(yellowLedPin, OUTPUT);
+    pinMode(greenLedPin, OUTPUT);
+    pinMode(buzzerPin, OUTPUT);
+    pinMode(pulsePin, INPUT);
+    
+    digitalWrite(redLedPin, LOW);
+    digitalWrite(yellowLedPin, LOW);
+    digitalWrite(greenLedPin, LOW);
+    digitalWrite(buzzerPin, LOW);
+
+    if (!display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) {
+        Serial.println(F("SSD1306 allocation failed"));
+        for (;;);
+    }
+    display.clearDisplay();
+    display.setTextSize(1);
+    display.setTextColor(SSD1306_WHITE);
+}
+
+void loop() {
+    pulseValue = analogRead(pulsePin);  // Read pulse value from the sensor
+
+    // Set bpm to 0 if pulse value is below the threshold (no touch or pulse detected)
+    if (pulseValue < threshold) {
+        bpm = 0;
+    } else {
+        bpm = max(0, (int)map(pulseValue, threshold, 1023, 0, 140));
+    }
+    
+    display.clearDisplay();
+    display.setCursor(0, 0);
+    display.print("Heart Rate: ");
+    display.print(bpm);
+    display.print(" BPM");
+    
+    // Control LEDs and buzzer based on BPM
+    if (bpm == 0) {
+        // No pulse detected, turn off everything
+        digitalWrite(redLedPin, LOW);
+        digitalWrite(yellowLedPin, LOW);
+        digitalWrite(greenLedPin, LOW);
+        digitalWrite(buzzerPin, LOW);
+    } else if (bpm < 60) {
+        // Low heart rate: Red LED and buzzer ON
+        digitalWrite(redLedPin, HIGH);
+        digitalWrite(yellowLedPin, LOW);
+        digitalWrite(greenLedPin, LOW);
+        digitalWrite(buzzerPin, HIGH);
+    } else if (bpm >= 60 && bpm < 85) {
+        // Normal heart rate: Yellow LED ON
+        digitalWrite(redLedPin, LOW);
+        digitalWrite(yellowLedPin, HIGH);
+        digitalWrite(greenLedPin, LOW);
+        digitalWrite(buzzerPin, LOW);
+    } else if (bpm >= 85 && bpm <= 135) {
+        // Good heart rate: Green LED ON
+        digitalWrite(redLedPin, LOW);
+        digitalWrite(yellowLedPin, LOW);
+        digitalWrite(greenLedPin, HIGH);
+        digitalWrite(buzzerPin, LOW);
+    } else {
+        // High heart rate: Red LED and buzzer ON
+        digitalWrite(redLedPin, HIGH);
+        digitalWrite(yellowLedPin, LOW);
+        digitalWrite(greenLedPin, LOW);
+        digitalWrite(buzzerPin, HIGH);
+    }
+
+    display.display();
+    delay(1000);
+}
